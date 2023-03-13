@@ -168,7 +168,7 @@ if __name__ == '__main__':
     loss = LossNet()
     lr = Tensor(dynamic_lr(config, dataset_size), mstype.float32)
 
-    opt = SGD(params=net.trainable_params(), learning_rate=0.001, momentum=config.momentum,
+    opt = SGD(params=net.trainable_params(), learning_rate=lr, momentum=config.momentum,
               weight_decay=config.weight_decay, loss_scale=config.loss_scale)
     net_with_loss = WithLossCell(net, loss)
     if args_opt.run_distribute:
