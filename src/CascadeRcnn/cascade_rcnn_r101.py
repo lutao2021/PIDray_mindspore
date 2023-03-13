@@ -288,7 +288,7 @@ class Cascade_Rcnn_Resnet101(nn.Cell):
         ####################R0_node#######################
         R0_target = ops.zeros(len(gt_bboxes), mindspore.float32)
         for i in range(gt_bboxes.shape[0]):
-            if gt_bboxes[i].sum() > 0:
+            if gt_labels[i][0] != 0:
                 R0_target[i] = 1
         R0_target = F.stop_gradient(R0_target)
         x0 = x[-1]
