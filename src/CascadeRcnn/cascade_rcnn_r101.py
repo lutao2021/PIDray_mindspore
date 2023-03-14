@@ -428,9 +428,8 @@ class Cascade_Rcnn_Resnet101(nn.Cell):
             output = self.get_det_bboxes(rcnn_cls_loss_3rd, rcnn_reg_loss_3rd, rcnn_masks_3, bboxes_all_3, img_metas)
             for i in range(self.train_batch_size):
                 if selected_id[i] == 0:
-                    for j in range(output[0][i].shape[0]):
-                        output[0][i][j][4] = 0
-                        output[1][i][j][0] = 0
+                    output[0][i, :, 4] = 0
+                    output[1][i, :, 0] = 0
 
         return output
 
