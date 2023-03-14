@@ -95,7 +95,7 @@ class Transformer(nn.Cell):
     def _reset_parameters(self):
         for p in self.trainable_params():
             if p.ndim > 1:
-                p = initializer(XavierUniform(), p.shape, mindspore.float32)
+                p.set_data(initializer(XavierUniform(), p.shape, mindspore.float32))
 
     def construct(self, src, query_embed, pos_embed, mask=None):
         # flatten NxCxHxW to HWxNxC
