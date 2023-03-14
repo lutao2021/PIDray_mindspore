@@ -425,7 +425,7 @@ class Cascade_Rcnn_Resnet101(nn.Cell):
             output += (rpn_loss, rcnn_loss_1st, rcnn_loss_2st, rcnn_loss_3rd,
                        rpn_cls_loss, rpn_reg_loss, rcnn_cls_loss_3rd, rcnn_reg_loss_3rd, loss_confidence)
         else:
-            output = self.get_det_bboxes(rcnn_cls_loss_3rd, rcnn_reg_loss_3rd, rcnn_masks_3, bboxes_all_3, img_metas)
+            output = list(self.get_det_bboxes(rcnn_cls_loss_3rd, rcnn_reg_loss_3rd, rcnn_masks_3, bboxes_all_3, img_metas))
             for i in range(self.train_batch_size):
                 if selected_id[i] == 0:
                     output[0][i, :, 4] = 0
