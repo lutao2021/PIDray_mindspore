@@ -420,7 +420,7 @@ class Cascade_Rcnn_Resnet101(nn.Cell):
                                                                                rcnn_labels_3,
                                                                                rcnn_mask_squeeze_3, selected_id, 3)
 
-        factor = selected_id.sum(0) / self.train_batch_size
+        factor = 1. * selected_id.sum(0) / self.train_batch_size
         rpn_loss = rpn_loss * factor
         rcnn_loss_1st = rcnn_loss_1st * factor
         rcnn_loss_2st = rcnn_loss_2st * factor
