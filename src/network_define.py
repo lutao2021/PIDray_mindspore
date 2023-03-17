@@ -93,6 +93,12 @@ class LossNet(nn.Cell):
     CascadeRcnn loss method
     """
     def construct(self, x1, x2, x3, x4, x5, x6, x7, x8, x9):
+        print('x1', x1)
+        print('x2', x2)
+        print('x3', x3)
+        print('x4', x4)
+        print('loss_confidence', x9)
+        # return (x1 + x2 + x3 + x4 + x9) * 0
         return x1 + x2 + x3 + x4 + x9
 
 
