@@ -1,16 +1,3 @@
-# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-"""
-Q2L Transformer class.
-
-Most borrow from DETR except:
-    * remove self-attention by default.
-
-Copy-paste from torch.nn.Transformer with modifications:
-    * positional encodings are passed in MHattention
-    * extra LN at the end of encoder is removed
-    * decoder returns a stack of activations from all decoding layers
-    * using modified multihead attention from nn_multiheadattention.py
-"""
 import copy
 from typing import Optional, List
 
@@ -21,6 +8,7 @@ from mindspore.ops import operations as P
 import mindspore.ops as ops
 from mindspore.common.tensor import Tensor
 from mindspore.common.initializer import initializer, XavierUniform
+from .MultiHeadAttention import MultiheadAttention
 
 
 class Transformer(nn.Cell):
@@ -265,6 +253,7 @@ class TransformerDecoderLayer(nn.Cell):
                                                            hidden_size=d_model, num_heads=nhead,
                                                            hidden_dropout_rate=dropout, attention_dropout_rate=dropout,
                                                            compute_dtype=mindspore.float32)
+        # self.multihead_attn = MultiheadAttention(embed_dim=d_model, num_heads=nhead, attn_drop=dropout, proj_drop=dropout)
         # Implementation of Feedforward model
         self.linear1 = nn.Dense(d_model, dim_feedforward)
         self.dropout = nn.Dropout(dropout)
@@ -306,6 +295,11 @@ class TransformerDecoderLayer(nn.Cell):
         tgt2, sim_mat_2 = self.multihead_attn(self.with_pos_embed(tgt, query_pos).transpose(1,0,2),
                                               self.with_pos_embed(memory, pos).transpose(1,0,2),
                                               memory.transpose(1,0,2), attention_mask=memory_mask)
+        # tgt2 = self.multihead_attn(self.with_pos_embed(tgt, query_pos).transpose(1,0,2),
+        #                                       self.with_pos_embed(memory, pos).transpose(1,0,2),
+        #                                       memory.transpose(1,0,2), attn_mask=None)
+        # tgt2 = memory.mean(0).view(memory.shape[1], 1, memory.shape[2])
+
         tgt2 = tgt2.transpose(1,0,2)
 
         tgt = tgt + self.dropout2(tgt2)
