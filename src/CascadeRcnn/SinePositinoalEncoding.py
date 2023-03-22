@@ -7,7 +7,7 @@ import mindspore.numpy as np
 from mindspore import Tensor, Parameter
 
 class SinePositionalEncoding(nn.Cell):
-       """
+    """
     This is a more standard version of the position embedding, very similar to the one
     used by the Attention is all you need paper, generalized to work on images.
     """
