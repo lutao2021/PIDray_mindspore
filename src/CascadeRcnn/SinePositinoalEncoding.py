@@ -7,94 +7,39 @@ import mindspore.numpy as np
 from mindspore import Tensor, Parameter
 
 class SinePositionalEncoding(nn.Cell):
-    """Position encoding with sine and cosine functions.
-
-    See `End-to-End Object Detection with Transformers
-    <https://arxiv.org/pdf/2005.12872>`_ for details.
-
-    Args:
-        num_feats (int): The feature dimension for each position
-            along x-axis or y-axis. Note the final returned dimension
-            for each position is 2 times of this value.
-        temperature (int, optional): The temperature used for scaling
-            the position embedding. Defaults to 10000.
-        normalize (bool, optional): Whether to normalize the position
-            embedding. Defaults to False.
-        scale (float, optional): A scale factor that scales the position
-            embedding. The scale will be used only when `normalize` is True.
-            Defaults to 2*pi.
-        eps (float, optional): A value added to the denominator for
-            numerical stability. Defaults to 1e-6.
-        offset (float): offset add to embed when do the normalization.
-            Defaults to 0.
-        init_cfg (dict or list[dict], optional): Initialization config dict.
-            Default: None
+       """
+    This is a more standard version of the position embedding, very similar to the one
+    used by the Attention is all you need paper, generalized to work on images.
     """
-
-    def __init__(self,
-                 num_feats,
-                 temperature=10000,
-                 normalize=False,
-                 scale=2 * math.pi,
-                 eps=1e-6,
-                 offset=0.,
-                 init_cfg=None):
-        super(SinePositionalEncoding, self).__init__(init_cfg)
-        if normalize:
-            assert isinstance(scale, (float, int)), 'when normalize is set,' \
-                'scale should be provided and in float or int type, ' \
-                f'found {type(scale)}'
-        self.num_feats = num_feats
-        self.temperature = temperature
+    def __init__(self, num_pos_feats=64, temperature=10000, normalize=False, scale=None):
+        super().__init__()
+        self.num_pos_feats = num_pos_feats
+        self.temperature = Tensor(temperature)
         self.normalize = normalize
+        if scale is not None and normalize is False:
+            raise ValueError("normalize should be True if scale is passed")
+        if scale is None:
+            scale = 2 * math.pi
         self.scale = scale
-        self.eps = eps
-        self.offset = offset
 
     def construct(self, mask):
-        """Forward function for `SinePositionalEncoding`.
-
-        Args:
-            mask (Tensor): ByteTensor mask. Non-zero values representing
-                ignored positions, while zero values means valid positions
-                for this image. Shape [bs, h, w].
-
-        Returns:
-            pos (Tensor): Returned position embedding with shape
-                [bs, num_feats*2, h, w].
-        """
-        # For convenience of exporting to ONNX, it's required to convert
-        # `masks` from bool to int.
-        mask = mask.astype(mindspore.int32)
-        not_mask = 1 - mask  # logical_not
-        y_embed = not_mask.cumsum(1, dtype=mindspore.float32)
-        x_embed = not_mask.cumsum(2, dtype=mindspore.float32)
+        """construct"""
+        not_mask = ~mask.astype('bool')
+        y_embed = not_mask.cumsum(1, dtype=mstype.float32)
+        x_embed = not_mask.cumsum(2, dtype=mstype.float32)
         if self.normalize:
-            y_embed = (y_embed + self.offset) / \
-                      (y_embed[:, -1:, :] + self.eps) * self.scale
-            x_embed = (x_embed + self.offset) / \
-                      (x_embed[:, :, -1:] + self.eps) * self.scale
-        dim_t = Tensor(np.arange(self.num_feats), dtype=mindspore.float32)
-        dim_t = self.temperature**(2 * (dim_t // 2) / self.num_feats)
+            eps = 1e-6
+            y_embed = y_embed / (y_embed[:, -1:, :] + eps) * self.scale
+            x_embed = x_embed / (x_embed[:, :, -1:] + eps) * self.scale
+
+        dim_t = mnp.arange(self.num_pos_feats, dtype=mstype.float32)
+        dim_t = self.temperature ** (2 * (dim_t // 2) / self.num_pos_feats)
+
         pos_x = x_embed[:, :, :, None] / dim_t
         pos_y = y_embed[:, :, :, None] / dim_t
-        # use `view` instead of `flatten` for dynamically exporting to ONNX
-        B, H, W = mask.shape
-        pos_x = ops.stack(
-            (ops.sin(pos_x[:, :, :, 0::2]), ops.cos(pos_x[:, :, :, 1::2])),
-            axis=4).view(B, H, W, -1)
-        pos_y = ops.stack(
-            (ops.sin(pos_y[:, :, :, 0::2]), ops.cos(pos_y[:, :, :, 1::2])),
-            axis=4).view(B, H, W, -1)
-        pos = ops.concat((pos_y, pos_x), axis=3).transpose(0, 3, 1, 2)
+        pos_x = ops.Stack(axis=4)((ops.Sin()(pos_x[:, :, :, 0::2]), ops.Cos()(pos_x[:, :, :, 1::2])))
+        pos_x = pos_x.view(*pos_x.shape[:3], -1)
+        pos_y = ops.Stack(axis=4)((ops.Sin()(pos_y[:, :, :, 0::2]), ops.Cos()(pos_y[:, :, :, 1::2])))
+        pos_y = pos_y.view(*pos_y.shape[:3], -1)
+        pos = ops.Concat(axis=3)((pos_y, pos_x)).transpose(0, 3, 1, 2)
         return pos
-
-    def __repr__(self):
-        """str: a string that describes the module"""
-        repr_str = self.__class__.__name__
-        repr_str += f'(num_feats={self.num_feats}, '
-        repr_str += f'temperature={self.temperature}, '
-        repr_str += f'normalize={self.normalize}, '
-        repr_str += f'scale={self.scale}, '
-        repr_str += f'eps={self.eps})'
-        return repr_str
